@@ -1,0 +1,6 @@
+﻿# Credenciales y configuración local
+config/
+
+# Variables de entorno
+.env
+.env.*
