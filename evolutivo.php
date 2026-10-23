@@ -7,12 +7,16 @@ require_once __DIR__ . '/lib/indicadores.php';
 $pais      = param('pais', 'PERU');
 $archivo   = strtoupper(param('archivo', 'BUDGET'));
 $indicador = param('indicador', 'leads');
-$anios     = array_values(array_unique(array_map('intval', explode(',', param('anios', '2025,2026')))));
+$anios     = array_values(array_unique(array_map('intval', array_filter(explode(',', param('anios', '2025,2026')), 'strlen'))));
 
+if (count($anios) === 0) responderError('Debe indicar al menos un año');
 foreach ($anios as $a) {
     if ($a < 2000 || $a > 2100) responderError('Año inválido');
 }
-if (count($anios) === 0) responderError('Debe indicar al menos un año');
+if (max($anios) - min($anios) > 10) responderError('El rango de años no puede superar 10 años');
+
+// Valida el indicador contra los que calcula calcularIndicadores() antes de consultar la base
+if (!array_key_exists($indicador, calcularIndicadores(array()))) responderError('Indicador inválido');
 
 $totales = obtenerTotalesMensuales($pais, min($anios), max($anios));
 if ($totales === false) responderError('Error al consultar', 500);
@@ -26,10 +30,6 @@ foreach ($anios as $a) {
     }
     $serie[(string)$a] = $meses;
 }
-
-// Valida el indicador contra los que calcula calcularIndicadores()
-$muestra = calcularIndicadores(array());
-if (!array_key_exists($indicador, $muestra)) responderError('Indicador inválido');
 
 foreach ($serie as $a => $meses) {
     foreach ($meses as $i => $ind) {
