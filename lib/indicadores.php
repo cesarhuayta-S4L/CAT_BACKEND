@@ -5,12 +5,27 @@ function prom($t, $c)  { return isset($t[$c]) ? $t[$c]['promedio'] : null; }
 function dividir($a, $b) { return ($a === null || $b === null || $b == 0) ? null : $a / $b; }
 
 function calcularIndicadores($t) {
+    // IVA es un dato fijo repetido cada día: se promedia, no se suma.
+    // Leads es un dato diario, por eso se suma.
     $leads        = suma($t, 'LEADS');
-    $inversion    = suma($t, 'INVERSION (MILLONES)');
-    $inversionUsd = ($inversion === null) ? null : $inversion * 1000000;
+    $iva          = prom($t, 'IVA');
+
+    // CPL es un dato fijo de la tabla (CPL CON IVA). El concepto IVA viene en 0, así que se usa
+    // 16 %, que es la tasa con la que se calculó el CPL de la tabla (inversión / leads del mes * 1.16)
+    $tasaIva   = ($iva !== null && $iva > 0) ? $iva : 0.16;
+    $cplConIva = prom($t, 'CPL CON IVA');
+    $cplSinIva = ($cplConIva === null) ? null : $cplConIva / (1 + $tasaIva);
+
+    // Inversión = leads * CPL sin IVA (en dólares); 'inversion' va en millones
+    $inversionUsd = ($leads === null || $cplSinIva === null) ? null : $leads * $cplSinIva;
+    $inversion    = ($inversionUsd === null) ? null : $inversionUsd / 1000000;
     $brutas       = suma($t, 'MATRICULAS');
     $netas        = ($brutas === null) ? null : $brutas - suma0($t, 'CANCELACIONES');
-    $agentes      = prom($t, 'AGENTES INICIO TOTAL');
+    // Agentes: promedio entre los agentes al inicio y al final del mes
+    $agInicio     = prom($t, 'AGENTES INICIO TOTAL');
+    $agFinal      = prom($t, 'AGENTES FINAL TOTAL');
+    $agentes      = ($agInicio !== null && $agFinal !== null) ? ($agInicio + $agFinal) / 2
+                  : ($agInicio !== null ? $agInicio : $agFinal);
 
     $marketing = ($inversionUsd === null ? 0 : $inversionUsd)
                + suma0($t, 'REMUNERACIONES MAC')
@@ -30,8 +45,9 @@ function calcularIndicadores($t) {
 
     return array(
         'leads'          => $leads,
-        'cpl'            => dividir($inversionUsd, $leads),
+        'cpl'            => $cplSinIva,
         'inversion'      => $inversion,
+        'iva'            => $iva,
         'brutas'         => $brutas,
         'netas'          => $netas,
         'cr'             => dividir($brutas, $leads),

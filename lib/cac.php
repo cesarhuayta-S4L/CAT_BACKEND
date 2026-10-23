@@ -23,6 +23,30 @@ function obtenerTotales($pais, $desde, $hasta) {
     return $totales;
 }
 
+// Suma y promedio por año, mes, archivo y concepto, para un país y un rango de años
+function obtenerTotalesMensuales($pais, $anioDesde, $anioHasta) {
+    $sql = "SELECT YEAR(fecha) AS anio, MONTH(fecha) AS mes, archivo, concepto,
+                   SUM(valor_final) AS suma,
+                   AVG(valor_final) AS promedio
+            FROM datos_cac_dia
+            WHERE pais = ? AND fecha BETWEEN ? AND ?
+            GROUP BY anio, mes, archivo, concepto";
+
+    $filas = consultar($sql, "sss", array($pais, "$anioDesde-01-01", "$anioHasta-12-31"));
+    if ($filas === false) return false;
+
+    $totales = array();
+    foreach ($filas as $f) {
+        $archivo  = strtoupper(trim($f['archivo']));
+        $concepto = strtoupper(trim($f['concepto']));
+        $totales[(int)$f['anio']][(int)$f['mes']][$archivo][$concepto] = array(
+            'suma'     => (float)$f['suma'],
+            'promedio' => (float)$f['promedio']
+        );
+    }
+    return $totales;
+}
+
 // Leads por día, separados por archiv
 function obtenerLeadsDiarios($pais, $desde, $hasta) {
     $sql = "SELECT archivo, fecha, DAY(fecha) AS dia, SUM(valor_final) AS leads
