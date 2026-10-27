@@ -41,6 +41,7 @@ function calcularIndicadores($t) {
             + suma0($t, 'REMUNERACIONES SOPORTE')
             + suma0($t, 'TERCEROS')
             + suma0($t, 'OTROS GASTOS SAC')
+            + suma0($t, 'BOLSA MILLONARIA')
             + $telefonoSac;
 
     return array(
@@ -58,6 +59,7 @@ function calcularIndicadores($t) {
         'sales_cost'     => $ventas,
         'mac'            => dividir($marketing, $brutas),
         'sac'            => dividir($ventas, $brutas),
+        'cac_bruto'      => dividir($marketing + $ventas, $brutas),
         'cac_neto'       => dividir($marketing + $ventas, $netas),
         'sac_mas_mac'    => $marketing + $ventas
     );

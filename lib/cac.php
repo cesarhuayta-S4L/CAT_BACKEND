@@ -23,6 +23,73 @@ function obtenerTotales($pais, $desde, $hasta) {
     return $totales;
 }
 
+// Valores diarios no nulos de un rango, por archivo, concepto y fecha: [archivo][concepto][fecha] => valor
+function obtenerDiariosRango($pais, $desde, $hasta, $archivos) {
+    $marcas = implode(',', array_fill(0, count($archivos), '?'));
+    $sql = "SELECT archivo, concepto, fecha, valor_final
+            FROM datos_cac_dia
+            WHERE pais = ? AND fecha BETWEEN ? AND ?
+              AND archivo IN ($marcas)";
+
+    $filas = consultar($sql, str_repeat('s', 3 + count($archivos)), array_merge(array($pais, $desde, $hasta), $archivos));
+    if ($filas === false) return false;
+
+    $diarios = array();
+    foreach ($filas as $f) {
+        if ($f['valor_final'] === null) continue;
+        $diarios[strtoupper(trim($f['archivo']))][strtoupper(trim($f['concepto']))][$f['fecha']] = (float)$f['valor_final'];
+    }
+    return $diarios;
+}
+
+// Totales del rango con la misma forma que obtenerTotales() (concepto => suma/promedio),
+// armados día a día. $valorDia($concepto, $fecha) devuelve el valor de ese día o null si no hay dato.
+function totalizarRango($desde, $hasta, $conceptos, $valorDia) {
+    $totales = array();
+    foreach ($conceptos as $concepto) {
+        $suma = 0.0;
+        $n = 0;
+        for ($t = strtotime($desde), $fin = strtotime($hasta); $t <= $fin; $t = strtotime('+1 day', $t)) {
+            $v = $valorDia($concepto, date('Y-m-d', $t));
+            if ($v === null) continue;
+            $suma += $v;
+            $n++;
+        }
+        if ($n > 0) $totales[$concepto] = array('suma' => $suma, 'promedio' => $suma / $n);
+    }
+    return $totales;
+}
+
+// ESTIMADO del rango: los días anteriores a $hoy salen de REAL_MES y el resto sale de BUDGET.
+// Los conceptos que REAL_MES no trae (o trae vacíos), como CPL, BRANDING o remuneraciones MAC, salen de BUDGET.
+function obtenerTotalesEstimado($pais, $desde, $hasta, $hoy) {
+    $d = obtenerDiariosRango($pais, $desde, $hasta, array('BUDGET', 'REAL_MES'));
+    if ($d === false) return false;
+    $real   = isset($d['REAL_MES']) ? $d['REAL_MES'] : array();
+    $budget = isset($d['BUDGET']) ? $d['BUDGET'] : array();
+
+    return totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($budget), array_keys($real))),
+        function ($c, $fecha) use ($real, $budget, $hoy) {
+            if ($fecha < $hoy && isset($real[$c])) return isset($real[$c][$fecha]) ? $real[$c][$fecha] : 0.0;
+            return isset($budget[$c][$fecha]) ? $budget[$c][$fecha] : null;
+        });
+}
+
+// FORECAST del rango; los conceptos que FORECAST no trae (o trae vacíos) salen de BUDGET.
+function obtenerTotalesForecast($pais, $desde, $hasta) {
+    $d = obtenerDiariosRango($pais, $desde, $hasta, array('BUDGET', 'FORECAST'));
+    if ($d === false) return false;
+    $forecast = isset($d['FORECAST']) ? $d['FORECAST'] : array();
+    $budget   = isset($d['BUDGET']) ? $d['BUDGET'] : array();
+    if (count($forecast) === 0) return array();
+
+    return totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($budget), array_keys($forecast))),
+        function ($c, $fecha) use ($forecast, $budget) {
+            $fuente = isset($forecast[$c]) ? $forecast[$c] : (isset($budget[$c]) ? $budget[$c] : array());
+            return isset($fuente[$fecha]) ? $fuente[$fecha] : null;
+        });
+}
+
 // Suma y promedio por año, mes, archivo y concepto, para un país y un rango de años
 function obtenerTotalesMensuales($pais, $anioDesde, $anioHasta) {
     $sql = "SELECT YEAR(fecha) AS anio, MONTH(fecha) AS mes, archivo, concepto,
