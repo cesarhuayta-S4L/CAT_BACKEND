@@ -166,3 +166,28 @@ function obtenerFiltros() {
     
     return $r;
 }
+
+function obtenerTotalesDiarios($pais, $desde, $hasta) {
+    $sql = "SELECT fecha, archivo, concepto,
+                   SUM(valor_final) AS suma,
+                   AVG(valor_final) AS promedio
+            FROM datos_cac_dia
+            WHERE pais = ? AND fecha BETWEEN ? AND ?
+            GROUP BY fecha, archivo, concepto";
+
+    $filas = consultar($sql, "sss", array($pais, $desde, $hasta));
+    if ($filas === false) return false;
+
+    $totales = array();
+    foreach ($filas as $f) {
+        $fecha    = $f['fecha'];
+        $archivo  = strtoupper(trim($f['archivo']));
+        $concepto = strtoupper(trim($f['concepto']));
+        
+        $totales[$fecha][$archivo][$concepto] = array(
+            'suma'     => (float)$f['suma'],
+            'promedio' => (float)$f['promedio']
+        );
+    }
+    return $totales;
+}
