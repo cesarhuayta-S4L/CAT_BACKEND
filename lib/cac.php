@@ -1,14 +1,29 @@
 <?php
+
+function getFiltroPais($paisParam) {
+    if (strtoupper(trim($paisParam)) === 'TODOS' || empty($paisParam)) {
+        return array('sql' => '1=1', 'tipos' => '', 'params' => array());
+    }
+    $paises = array_filter(array_map('trim', explode(',', $paisParam)));
+    $marcas = implode(',', array_fill(0, count($paises), '?'));
+    return array(
+        'sql' => "pais IN ($marcas)",
+        'tipos' => str_repeat('s', count($paises)),
+        'params' => $paises
+    );
+}
+
 // Suma y promedio por archivo y concepto, para un país y rango de fechas
 function obtenerTotales($pais, $desde, $hasta) {
+    $p = getFiltroPais($pais);
     $sql = "SELECT archivo, concepto,
                    SUM(valor_final) AS suma,
                    AVG(valor_final) AS promedio
             FROM datos_cac_dia
-            WHERE pais = ? AND fecha BETWEEN ? AND ?
+            WHERE {$p['sql']} AND fecha BETWEEN ? AND ?
             GROUP BY archivo, concepto";
 
-    $filas = consultar($sql, "sss", array($pais, $desde, $hasta));
+    $filas = consultar($sql, $p['tipos'] . "ss", array_merge($p['params'], array($desde, $hasta)));
     if ($filas === false) return false;
 
     $totales = array();
@@ -33,13 +48,18 @@ function mismoDiaAnioAnterior($fecha) {
 
 // Valores diarios no nulos de un rango, por archivo, concepto y fecha: [archivo][concepto][fecha] => valor
 function obtenerDiariosRango($pais, $desde, $hasta, $archivos) {
-    $marcas = implode(',', array_fill(0, count($archivos), '?'));
+    $p = getFiltroPais($pais);
+    $marcasArchivos = implode(',', array_fill(0, count($archivos), '?'));
+    
     $sql = "SELECT archivo, concepto, fecha, valor_final
             FROM datos_cac_dia
-            WHERE pais = ? AND fecha BETWEEN ? AND ?
-              AND archivo IN ($marcas)";
+            WHERE {$p['sql']} AND fecha BETWEEN ? AND ?
+              AND archivo IN ($marcasArchivos)";
 
-    $filas = consultar($sql, str_repeat('s', 3 + count($archivos)), array_merge(array($pais, $desde, $hasta), $archivos));
+    $tipos = $p['tipos'] . "ss" . str_repeat('s', count($archivos));
+    $parametros = array_merge($p['params'], array($desde, $hasta), $archivos);
+    
+    $filas = consultar($sql, $tipos, $parametros);
     if ($filas === false) return false;
 
     $diarios = array();
@@ -100,14 +120,15 @@ function obtenerTotalesForecast($pais, $desde, $hasta) {
 
 // Suma y promedio por año, mes, archivo y concepto, para un país y un rango de años
 function obtenerTotalesMensuales($pais, $anioDesde, $anioHasta) {
+    $p = getFiltroPais($pais);
     $sql = "SELECT YEAR(fecha) AS anio, MONTH(fecha) AS mes, archivo, concepto,
                    SUM(valor_final) AS suma,
                    AVG(valor_final) AS promedio
             FROM datos_cac_dia
-            WHERE pais = ? AND fecha BETWEEN ? AND ?
+            WHERE {$p['sql']} AND fecha BETWEEN ? AND ?
             GROUP BY anio, mes, archivo, concepto";
 
-    $filas = consultar($sql, "sss", array($pais, "$anioDesde-01-01", "$anioHasta-12-31"));
+    $filas = consultar($sql, $p['tipos'] . "ss", array_merge($p['params'], array("$anioDesde-01-01", "$anioHasta-12-31")));
     if ($filas === false) return false;
 
     $totales = array();
@@ -124,14 +145,15 @@ function obtenerTotalesMensuales($pais, $anioDesde, $anioHasta) {
 
 // Leads por día, separados por archiv
 function obtenerLeadsDiarios($pais, $desde, $hasta) {
+    $p = getFiltroPais($pais);
     $sql = "SELECT archivo, fecha, DAY(fecha) AS dia, SUM(valor_final) AS leads
             FROM datos_cac_dia
-            WHERE pais = ? AND fecha BETWEEN ? AND ?
+            WHERE {$p['sql']} AND fecha BETWEEN ? AND ?
               AND UPPER(TRIM(concepto)) = 'LEADS'
             GROUP BY archivo, fecha
             ORDER BY fecha";
 
-    $filas = consultar($sql, "sss", array($pais, $desde, $hasta));
+    $filas = consultar($sql, $p['tipos'] . "ss", array_merge($p['params'], array($desde, $hasta)));
     if ($filas === false) return false;
 
     $serie = array();
@@ -176,14 +198,15 @@ function obtenerFiltros() {
 }
 
 function obtenerTotalesDiarios($pais, $desde, $hasta) {
+    $p = getFiltroPais($pais);
     $sql = "SELECT fecha, archivo, concepto,
                    SUM(valor_final) AS suma,
                    AVG(valor_final) AS promedio
             FROM datos_cac_dia
-            WHERE pais = ? AND fecha BETWEEN ? AND ?
+            WHERE {$p['sql']} AND fecha BETWEEN ? AND ?
             GROUP BY fecha, archivo, concepto";
 
-    $filas = consultar($sql, "sss", array($pais, $desde, $hasta));
+    $filas = consultar($sql, $p['tipos'] . "ss", array_merge($p['params'], array($desde, $hasta)));
     if ($filas === false) return false;
 
     $totales = array();
