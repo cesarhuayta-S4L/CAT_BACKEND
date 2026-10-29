@@ -23,6 +23,14 @@ function obtenerTotales($pais, $desde, $hasta) {
     return $totales;
 }
 
+// Misma fecha un año antes; el 29 de febrero pasa al 28.
+function mismoDiaAnioAnterior($fecha) {
+    $anio = (int)substr($fecha, 0, 4) - 1;
+    $mesDia = substr($fecha, 5);
+    if ($mesDia === '02-29') $mesDia = '02-28';
+    return $anio . '-' . $mesDia;
+}
+
 // Valores diarios no nulos de un rango, por archivo, concepto y fecha: [archivo][concepto][fecha] => valor
 function obtenerDiariosRango($pais, $desde, $hasta, $archivos) {
     $marcas = implode(',', array_fill(0, count($archivos), '?'));

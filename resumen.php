@@ -17,6 +17,11 @@ foreach ($totales as $archivo => $t) {
     $indicadores[$archivo] = calcularIndicadores($t, $archivo);
 }
 
+// AA: CMU del mismo rango un año antes (octubre 2026 se compara con octubre 2025).
+$anterior = obtenerTotales($pais, mismoDiaAnioAnterior($desde), mismoDiaAnioAnterior($hasta));
+if ($anterior === false) responderError('Error al consultar', 500);
+if (isset($anterior['CMU'])) $indicadores['AA'] = calcularIndicadores($anterior['CMU'], 'CMU');
+
 // Bloques del periodo pedido (desde-hasta), completados con BUDGET donde falta dato:
 // ESTIMADO = real hasta ayer + budget del resto del rango; FORECAST_PERIODO = forecast del rango.
 $estimado = obtenerTotalesEstimado($pais, $desde, $hasta, date('Y-m-d'));
