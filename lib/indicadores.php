@@ -4,7 +4,7 @@ function suma0($t, $c) { return isset($t[$c]) ? $t[$c]['suma'] : 0; }
 function prom($t, $c)  { return isset($t[$c]) ? $t[$c]['promedio'] : null; }
 function dividir($a, $b) { return ($a === null || $b === null || $b == 0) ? null : $a / $b; }
 
-function calcularIndicadores($t) {
+function calcularIndicadores($t, $archivo = '') {
     $leads        = suma($t, 'LEADS');
     $iva          = prom($t, 'IVA');
 
@@ -12,7 +12,12 @@ function calcularIndicadores($t) {
     $cplConIva = prom($t, 'CPL CON IVA');
     $cplSinIva = ($cplConIva === null) ? null : $cplConIva / (1 + $tasaIva);
 
-    $inversionUsd = ($leads === null || $cplSinIva === null) ? null : $leads * $cplSinIva;
+    // Solo CMU: INVERSION (MILLONES) viene con IVA y en moneda completa (en los demás archivos va en millones),
+    // se usa tal cual; en el resto y si falta, leads * CPL sin IVA.
+    $inversionUsd = ($archivo === 'CMU') ? suma($t, 'INVERSION (MILLONES)') : null;
+    if ($inversionUsd === null) {
+        $inversionUsd = ($leads === null || $cplSinIva === null) ? null : $leads * $cplSinIva;
+    }
     $inversion    = ($inversionUsd === null) ? null : $inversionUsd / 1000000;
     
     $brutas       = suma($t, 'MATRICULAS');

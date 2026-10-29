@@ -14,7 +14,7 @@ if ($totales === false) responderError('Error al consultar', 500);
 
 $indicadores = array();
 foreach ($totales as $archivo => $t) {
-    $indicadores[$archivo] = calcularIndicadores($t);
+    $indicadores[$archivo] = calcularIndicadores($t, $archivo);
 }
 
 // Bloques del periodo pedido (desde-hasta), completados con BUDGET donde falta dato:

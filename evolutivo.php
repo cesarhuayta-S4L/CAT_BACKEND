@@ -26,7 +26,7 @@ $serie = array();
 foreach ($anios as $a) {
     $meses = array();
     for ($m = 1; $m <= 12; $m++) {
-        $meses[] = isset($totales[$a][$m][$archivo]) ? calcularIndicadores($totales[$a][$m][$archivo]) : null;
+        $meses[] = isset($totales[$a][$m][$archivo]) ? calcularIndicadores($totales[$a][$m][$archivo], $archivo) : null;
     }
     $serie[(string)$a] = $meses;
 }
