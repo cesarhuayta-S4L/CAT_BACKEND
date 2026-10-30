@@ -206,7 +206,7 @@ function obtenerLeadsDiarios($pais, $desde, $hasta) {
 function obtenerFiltros() {
     $r = array();
     
-    $paisesPermitidos = "'ARGENTINA', 'COLOMBIA', 'DOMINICANA', 'ECUADOR', 'GUATEMALA', 'PERU', 'USA'";
+    $paisesPermitidos = "'ARGENTINA', 'COLOMBIA', 'DOMINICANA', 'ECUADOR', 'PERU', 'USA'";
     $r['paises'] = array();
     
     $filasPaises = consultar("SELECT DISTINCT pais AS v FROM datos_cac_dia WHERE valor_final > 0 AND valor_final IS NOT NULL AND pais IN ($paisesPermitidos) ORDER BY v");
