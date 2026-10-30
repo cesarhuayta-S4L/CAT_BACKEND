@@ -17,11 +17,15 @@ $ind_estimado = array();
 $ind_forecast = array();
 $ind_aa       = array();
 $hoy = date('Y-m-d');
+$mes_cerrado  = false;
 
 foreach ($paises_activos as $p) {
     
     $totales = obtenerTotales($p, $desde, $hasta);
     if ($totales !== false) {
+        if (isset($totales['CMU'])) {
+            $mes_cerrado = true;
+        }
         foreach ($totales as $archivo => $t) {
             $ind_archivos[$archivo][] = calcularIndicadores($t, $archivo);
         }
@@ -63,5 +67,6 @@ responder(array(
     'pais'        => $pais,
     'desde'       => $desde,
     'hasta'       => $hasta,
+    'mes_cerrado' => $mes_cerrado,
     'indicadores' => (object)$indicadores
 ));
