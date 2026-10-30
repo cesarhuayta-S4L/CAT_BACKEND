@@ -76,3 +76,45 @@ function calcularIndicadores($t, $archivo = '') {
         'sac_mas_mac'    => $marketing + $ventas
     );
 }
+
+function consolidarIndicadores($lista) {
+    if (count($lista) === 0) return calcularIndicadores(array());
+    if (count($lista) === 1) return $lista[0]; // Si es 1 país, devuelve tal cual
+
+    $suma = array(
+        'leads' => 0, 'inversion' => 0, 'brutas' => 0, 'netas' => 0,
+        'agentes' => 0, 'marketing_cost' => 0, 'sales_cost' => 0
+    );
+
+    foreach ($lista as $ind) {
+        $suma['leads']          += (float)$ind['leads'];
+        $suma['inversion']      += (float)$ind['inversion'];
+        $suma['brutas']         += (float)$ind['brutas'];
+        $suma['netas']          += (float)$ind['netas'];
+        $suma['agentes']        += (float)$ind['agentes'];
+        $suma['marketing_cost'] += (float)$ind['marketing_cost'];
+        $suma['sales_cost']     += (float)$ind['sales_cost'];
+    }
+
+    $inversionUsd = $suma['inversion'] * 1000000;
+    
+    return array(
+        'leads'          => $suma['leads'],
+        'cpl'            => dividir($inversionUsd, $suma['leads']),
+        'inversion'      => $suma['inversion'],
+        'iva'            => null,
+        'brutas'         => $suma['brutas'],
+        'netas'          => $suma['netas'],
+        'cr'             => dividir($suma['brutas'], $suma['leads']),
+        'agentes'        => $suma['agentes'],
+        'vpa'            => dividir($suma['brutas'], $suma['agentes']),
+        'lpa'            => dividir($suma['leads'], $suma['agentes']),
+        'marketing_cost' => $suma['marketing_cost'],
+        'sales_cost'     => $suma['sales_cost'],
+        'mac'            => dividir($suma['marketing_cost'], $suma['brutas']),
+        'sac'            => dividir($suma['sales_cost'], $suma['brutas']),
+        'cac_bruto'      => dividir($suma['marketing_cost'] + $suma['sales_cost'], $suma['brutas']),
+        'cac_neto'       => dividir($suma['marketing_cost'] + $suma['sales_cost'], $suma['netas']),
+        'sac_mas_mac'    => $suma['marketing_cost'] + $suma['sales_cost']
+    );
+}

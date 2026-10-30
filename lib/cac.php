@@ -257,3 +257,16 @@ function obtenerTotalesDiarios($pais, $desde, $hasta) {
     }
     return $totales;
 }
+
+function obtenerPaisesActivos($pais, $desde, $hasta) {
+    $p = getFiltroPais($pais);
+    $sql = "SELECT DISTINCT pais FROM datos_cac_dia WHERE {$p['sql']} AND fecha BETWEEN ? AND ?";
+    $filas = consultar($sql, $p['tipos'] . "ss", array_merge($p['params'], array($desde, $hasta)));
+    $res = array();
+    if ($filas) {
+        foreach ($filas as $f) {
+            $res[] = strtoupper(trim($f['pais']));
+        }
+    }
+    return $res;
+}

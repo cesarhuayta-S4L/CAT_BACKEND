@@ -9,34 +9,55 @@ $desde = param('desde', date('Y-m-01'));
 $hasta = param('hasta', date('Y-m-d'));
 validarRango($desde, $hasta);
 
-$totales = obtenerTotales($pais, $desde, $hasta);
-if ($totales === false) responderError('Error al consultar', 500);
+$paises_activos = obtenerPaisesActivos($pais, $desde, $hasta);
+if (empty($paises_activos)) responderError('No hay datos para el país o rango', 404);
+
+$ind_archivos = array();
+$ind_estimado = array();
+$ind_forecast = array();
+$ind_aa       = array();
+$hoy = date('Y-m-d');
+
+foreach ($paises_activos as $p) {
+    
+    $totales = obtenerTotales($p, $desde, $hasta);
+    if ($totales !== false) {
+        foreach ($totales as $archivo => $t) {
+            $ind_archivos[$archivo][] = calcularIndicadores($t, $archivo);
+        }
+    }
+
+    $anterior = obtenerTotales($p, mismoDiaAnioAnterior($desde), mismoDiaAnioAnterior($hasta));
+    if ($anterior !== false && isset($anterior['CMU'])) {
+        $ind_aa[] = calcularIndicadores($anterior['CMU'], 'CMU');
+    }
+
+    if (isset($totales['CMU']) && cmuCubreRango($p, $desde, $hasta)) {
+        $ind_estimado[] = calcularIndicadores($totales['CMU'], 'CMU');
+    } else {
+        $estimado = obtenerTotalesEstimado($p, $desde, $hasta, $hoy);
+        if ($estimado !== false) $ind_estimado[] = calcularIndicadores($estimado);
+    }
+
+    $forecast = obtenerTotalesForecast($p, $desde, $hasta);
+    if ($forecast !== false && count($forecast) > 0) {
+        $ind_forecast[] = calcularIndicadores($forecast);
+    }
+}
 
 $indicadores = array();
-foreach ($totales as $archivo => $t) {
-    $indicadores[$archivo] = calcularIndicadores($t, $archivo);
+foreach ($ind_archivos as $archivo => $lista) {
+    $indicadores[$archivo] = consolidarIndicadores($lista);
 }
-
-// AA: CMU del mismo rango un año antes (octubre 2026 se compara con octubre 2025).
-$anterior = obtenerTotales($pais, mismoDiaAnioAnterior($desde), mismoDiaAnioAnterior($hasta));
-if ($anterior === false) responderError('Error al consultar', 500);
-if (isset($anterior['CMU'])) $indicadores['AA'] = calcularIndicadores($anterior['CMU'], 'CMU');
-
-// Bloques del periodo pedido (desde-hasta), completados con BUDGET donde falta dato:
-// ESTIMADO = real hasta ayer + budget del resto del rango; FORECAST_PERIODO = forecast del rango.
-$estimado = obtenerTotalesEstimado($pais, $desde, $hasta, date('Y-m-d'));
-if ($estimado === false) responderError('Error al consultar', 500);
-$indicadores['ESTIMADO'] = calcularIndicadores($estimado);
-
-// Mes cerrado: si CMU tiene todos los días del rango, el estimado es el CMU real (como AA, pero del año en curso).
-if (isset($indicadores['CMU']) && cmuCubreRango($pais, $desde, $hasta)) {
-    $indicadores['ESTIMADO'] = $indicadores['CMU'];
+if (count($ind_aa) > 0) {
+    $indicadores['AA'] = consolidarIndicadores($ind_aa);
 }
-
-// Si no hay datos de forecast para ese país/rango, no se devuelve el bloque.
-$forecast = obtenerTotalesForecast($pais, $desde, $hasta);
-if ($forecast === false) responderError('Error al consultar', 500);
-if (count($forecast) > 0) $indicadores['FORECAST_PERIODO'] = calcularIndicadores($forecast);
+if (count($ind_estimado) > 0) {
+    $indicadores['ESTIMADO'] = consolidarIndicadores($ind_estimado);
+}
+if (count($ind_forecast) > 0) {
+    $indicadores['FORECAST_PERIODO'] = consolidarIndicadores($ind_forecast);
+}
 
 responder(array(
     'pais'        => $pais,
