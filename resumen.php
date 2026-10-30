@@ -28,6 +28,11 @@ $estimado = obtenerTotalesEstimado($pais, $desde, $hasta, date('Y-m-d'));
 if ($estimado === false) responderError('Error al consultar', 500);
 $indicadores['ESTIMADO'] = calcularIndicadores($estimado);
 
+// Mes cerrado: si CMU tiene todos los días del rango, el estimado es el CMU real (como AA, pero del año en curso).
+if (isset($indicadores['CMU']) && cmuCubreRango($pais, $desde, $hasta)) {
+    $indicadores['ESTIMADO'] = $indicadores['CMU'];
+}
+
 // Si no hay datos de forecast para ese país/rango, no se devuelve el bloque.
 $forecast = obtenerTotalesForecast($pais, $desde, $hasta);
 if ($forecast === false) responderError('Error al consultar', 500);

@@ -12,8 +12,6 @@ function calcularIndicadores($t, $archivo = '') {
     $cplConIva = prom($t, 'CPL CON IVA');
     $cplSinIva = ($cplConIva === null) ? null : $cplConIva / (1 + $tasaIva);
 
-    // Solo CMU: INVERSION (MILLONES) viene con IVA y en moneda completa (en los demás archivos va en millones),
-    // se usa tal cual; en el resto y si falta, leads * CPL sin IVA.
     $inversionUsd = ($archivo === 'CMU') ? suma($t, 'INVERSION (MILLONES)') : null;
     if ($inversionUsd === null) {
         $inversionUsd = ($leads === null || $cplSinIva === null) ? null : $leads * $cplSinIva;
@@ -44,11 +42,14 @@ function calcularIndicadores($t, $archivo = '') {
     if ($ventasDirecto !== null) {
         $ventas = $ventasDirecto;
     } else {
-        $costoTel    = prom($t, 'COSTO DE TELEFONO POR LEAD');
-        $telefonoSac = ($costoTel !== null && $leads !== null) ? $costoTel * $leads : 0;
+        $telefonoSac = ($archivo === 'CMU') ? suma($t, 'TELEFONO') : null;
+        if ($telefonoSac === null) {
+            $costoTel    = prom($t, 'COSTO DE TELEFONO POR LEAD');
+            $telefonoSac = ($costoTel !== null && $leads !== null) ? $costoTel * $leads : 0;
+        }
 
         $ventas = suma0($t, 'COSTO DE PERSONAL')
-                + suma0($t, 'REMUNERACIONES SOPORTE')
+                + ($archivo === 'CMU' ? 0 : suma0($t, 'REMUNERACIONES SOPORTE'))
                 + suma0($t, 'TERCEROS')
                 + suma0($t, 'OTROS GASTOS SAC')
                 + suma0($t, 'BOLSA MILLONARIA')

@@ -46,6 +46,38 @@ function mismoDiaAnioAnterior($fecha) {
     return $anio . '-' . $mesDia;
 }
 
+// Meses cerrados de CMU: los que tienen dato en todos los días del mes calendario (aunque el rango pedido sea parcial).
+// Devuelve ['2026-09' => true, ...] o false si falla la consulta.
+function mesesCmuCerrados($pais, $desde, $hasta) {
+    $p = getFiltroPais($pais);
+    $sql = "SELECT DATE_FORMAT(fecha, '%Y-%m') AS mes, COUNT(DISTINCT fecha) AS dias
+            FROM datos_cac_dia
+            WHERE {$p['sql']} AND fecha BETWEEN ? AND ?
+              AND archivo = 'CMU'
+            GROUP BY mes";
+
+    $ini = date('Y-m-01', strtotime($desde));
+    $fin = date('Y-m-t', strtotime($hasta));
+    $filas = consultar($sql, $p['tipos'] . "ss", array_merge($p['params'], array($ini, $fin)));
+    if ($filas === false) return false;
+
+    $cerrados = array();
+    foreach ($filas as $f) {
+        if ((int)$f['dias'] >= (int)date('t', strtotime($f['mes'] . '-01'))) $cerrados[$f['mes']] = true;
+    }
+    return $cerrados;
+}
+
+// CMU cubre el rango pedido si todos los meses que toca están cerrados.
+function cmuCubreRango($pais, $desde, $hasta) {
+    $cerrados = mesesCmuCerrados($pais, $desde, $hasta);
+    if ($cerrados === false) return false;
+    for ($t = strtotime(date('Y-m-01', strtotime($desde))); $t <= strtotime($hasta); $t = strtotime('+1 month', $t)) {
+        if (!isset($cerrados[date('Y-m', $t)])) return false;
+    }
+    return true;
+}
+
 // Valores diarios no nulos de un rango, por archivo, concepto y fecha: [archivo][concepto][fecha] => valor
 function obtenerDiariosRango($pais, $desde, $hasta, $archivos) {
     $p = getFiltroPais($pais);
@@ -88,22 +120,26 @@ function totalizarRango($desde, $hasta, $conceptos, $valorDia) {
     return $totales;
 }
 
-// ESTIMADO del rango: los días anteriores a $hoy salen de REAL_MES y el resto sale de BUDGET.
-// Los conceptos que REAL_MES no trae (o trae vacíos), como CPL, BRANDING o remuneraciones MAC, salen de BUDGET.
+// ESTIMADO del rango, día a día: CMU solo en meses cerrados completos; si no, REAL_MES para los días
+// anteriores a $hoy y, si no hay ninguno, BUDGET. REMUNERACIONES SOPORTE de CMU no entra: ya está en COSTO DE PERSONAL.
 function obtenerTotalesEstimado($pais, $desde, $hasta, $hoy) {
-    $d = obtenerDiariosRango($pais, $desde, $hasta, array('BUDGET', 'REAL_MES'));
+    $d = obtenerDiariosRango($pais, $desde, $hasta, array('BUDGET', 'REAL_MES', 'CMU'));
     if ($d === false) return false;
     $real   = isset($d['REAL_MES']) ? $d['REAL_MES'] : array();
     $budget = isset($d['BUDGET']) ? $d['BUDGET'] : array();
+    $cmu    = isset($d['CMU']) ? $d['CMU'] : array();
+    unset($cmu['REMUNERACIONES SOPORTE']);
+    $cerrados = mesesCmuCerrados($pais, $desde, $hasta);
+    if ($cerrados === false) $cerrados = array();
 
-    return totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($budget), array_keys($real))),
-        function ($c, $fecha) use ($real, $budget, $hoy) {
+    return totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($budget), array_keys($real), array_keys($cmu))),
+        function ($c, $fecha) use ($real, $budget, $cmu, $cerrados, $hoy) {
+            if (isset($cerrados[substr($fecha, 0, 7)]) && isset($cmu[$c][$fecha])) return $cmu[$c][$fecha];
             if ($fecha < $hoy && isset($real[$c])) return isset($real[$c][$fecha]) ? $real[$c][$fecha] : 0.0;
             return isset($budget[$c][$fecha]) ? $budget[$c][$fecha] : null;
         });
 }
 
-// FORECAST del rango; los conceptos que FORECAST no trae (o trae vacíos) salen de BUDGET.
 function obtenerTotalesForecast($pais, $desde, $hasta) {
     $d = obtenerDiariosRango($pais, $desde, $hasta, array('BUDGET', 'FORECAST'));
     if ($d === false) return false;
@@ -118,7 +154,6 @@ function obtenerTotalesForecast($pais, $desde, $hasta) {
         });
 }
 
-// Suma y promedio por año, mes, archivo y concepto, para un país y un rango de años
 function obtenerTotalesMensuales($pais, $anioDesde, $anioHasta) {
     $p = getFiltroPais($pais);
     $sql = "SELECT YEAR(fecha) AS anio, MONTH(fecha) AS mes, archivo, concepto,
