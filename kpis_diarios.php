@@ -47,11 +47,7 @@ for ($t = strtotime($desde), $fin = strtotime($hasta); $t <= $fin; $t = strtotim
         foreach ($conceptos as $c) {
             $valor = null;
             if ($archivo === 'ESTIMADO') {
-                if ($fecha < $hoy && isset($real[$c])) {
-                    $valor = isset($real[$c][$fecha]) ? $real[$c][$fecha] : 0.0;
-                } else {
-                    $valor = isset($budget[$c][$fecha]) ? $budget[$c][$fecha] : null;
-                }
+                $valor = isset($real[$c][$fecha]) ? $real[$c][$fecha] : null;
             } else if ($archivo === 'FORECAST_PERIODO') {
                 $fuente = isset($forecast[$c]) ? $forecast[$c] : (isset($budget[$c]) ? $budget[$c] : array());
                 $valor = isset($fuente[$fecha]) ? $fuente[$fecha] : null;

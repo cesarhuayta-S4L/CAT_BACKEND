@@ -10,9 +10,16 @@ function calcularIndicadores($t, $archivo = '') {
 
     $tasaIva   = ($iva !== null && $iva > 0) ? $iva : 0.16;
     $cplConIva = prom($t, 'CPL CON IVA');
+    
+    if (in_array($archivo, ['REAL_MES', 'FORECAST', 'FORECAST_PERIODO', 'CMU', 'ESTIMADO']) && $cplConIva === null && $leads > 0) {
+        $inv_temp = suma($t, 'INVERSION (MILLONES)');
+        if ($inv_temp !== null) $cplConIva = $inv_temp / $leads * (1 + $tasaIva);
+    }
+    
     $cplSinIva = ($cplConIva === null) ? null : $cplConIva / (1 + $tasaIva);
 
-    $inversionUsd = ($archivo === 'CMU') ? suma($t, 'INVERSION (MILLONES)') : null;
+    $inversionUsd = in_array($archivo, ['CMU', 'REAL_MES', 'FORECAST', 'FORECAST_PERIODO', 'ESTIMADO']) ? suma($t, 'INVERSION (MILLONES)') : null;
+    
     if ($inversionUsd === null) {
         $inversionUsd = ($leads === null || $cplSinIva === null) ? null : $leads * $cplSinIva;
     }

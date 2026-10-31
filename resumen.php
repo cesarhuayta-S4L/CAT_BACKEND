@@ -40,7 +40,7 @@ foreach ($paises_activos as $p) {
         $ind_estimado[] = calcularIndicadores($totales['CMU'], 'CMU');
     } else {
         $estimado = obtenerTotalesEstimado($p, $desde, $hasta, $hoy);
-        if ($estimado !== false) $ind_estimado[] = calcularIndicadores($estimado);
+        if ($estimado !== false) $ind_estimado[] = calcularIndicadores($estimado, 'ESTIMADO');
     }
 
     $forecast = obtenerTotalesForecast($p, $desde, $hasta);

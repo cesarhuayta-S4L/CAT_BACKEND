@@ -123,20 +123,18 @@ function totalizarRango($desde, $hasta, $conceptos, $valorDia) {
 // ESTIMADO del rango, día a día: CMU solo en meses cerrados completos; si no, REAL_MES para los días
 // anteriores a $hoy y, si no hay ninguno, BUDGET. REMUNERACIONES SOPORTE de CMU no entra: ya está en COSTO DE PERSONAL.
 function obtenerTotalesEstimado($pais, $desde, $hasta, $hoy) {
-    $d = obtenerDiariosRango($pais, $desde, $hasta, array('BUDGET', 'REAL_MES', 'CMU'));
+    $d = obtenerDiariosRango($pais, $desde, $hasta, array('REAL_MES', 'CMU'));
     if ($d === false) return false;
     $real   = isset($d['REAL_MES']) ? $d['REAL_MES'] : array();
-    $budget = isset($d['BUDGET']) ? $d['BUDGET'] : array();
     $cmu    = isset($d['CMU']) ? $d['CMU'] : array();
     unset($cmu['REMUNERACIONES SOPORTE']);
     $cerrados = mesesCmuCerrados($pais, $desde, $hasta);
     if ($cerrados === false) $cerrados = array();
 
-    return totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($budget), array_keys($real), array_keys($cmu))),
-        function ($c, $fecha) use ($real, $budget, $cmu, $cerrados, $hoy) {
+    return totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($real), array_keys($cmu))),
+        function ($c, $fecha) use ($real, $cmu, $cerrados) {
             if (isset($cerrados[substr($fecha, 0, 7)]) && isset($cmu[$c][$fecha])) return $cmu[$c][$fecha];
-            if ($fecha < $hoy && isset($real[$c])) return isset($real[$c][$fecha]) ? $real[$c][$fecha] : 0.0;
-            return isset($budget[$c][$fecha]) ? $budget[$c][$fecha] : null;
+            return isset($real[$c][$fecha]) ? $real[$c][$fecha] : null;
         });
 }
 
