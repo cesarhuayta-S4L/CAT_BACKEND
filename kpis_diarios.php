@@ -12,6 +12,7 @@ $hasta   = param('hasta', date('Y-m-d'));
 if ($desde > $hasta) responderError('Rango de fechas inválido');
 
 $archivos_necesarios = array('BUDGET');
+if ($archivo === 'REBUDGET') $archivos_necesarios[] = 'REBUDGET';
 if ($archivo === 'REAL_MES' || $archivo === 'ESTIMADO') $archivos_necesarios[] = 'REAL_MES';
 if ($archivo === 'FORECAST' || $archivo === 'FORECAST_PERIODO') $archivos_necesarios[] = 'FORECAST';
 
