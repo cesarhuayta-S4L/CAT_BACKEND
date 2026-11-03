@@ -18,6 +18,7 @@ $ind_forecast = array();
 $ind_aa       = array();
 $hoy = date('Y-m-d');
 $mes_cerrado  = false;
+$dias = diasRango($desde, $hasta);
 
 foreach ($paises_activos as $p) {
     
@@ -27,40 +28,40 @@ foreach ($paises_activos as $p) {
             $mes_cerrado = true;
         }
         foreach ($totales as $archivo => $t) {
-            $ind_archivos[$archivo][] = calcularIndicadores($t, $archivo);
+            $ind_archivos[$archivo][] = calcularIndicadores($t, $archivo, $dias);
         }
     }
 
     $anterior = obtenerTotales($p, mismoDiaAnioAnterior($desde), mismoDiaAnioAnterior($hasta));
     if ($anterior !== false && isset($anterior['CMU'])) {
-        $ind_aa[] = calcularIndicadores($anterior['CMU'], 'CMU');
+        $ind_aa[] = calcularIndicadores($anterior['CMU'], 'CMU', $dias, true);
     }
 
     if (isset($totales['CMU']) && cmuCubreRango($p, $desde, $hasta)) {
-        $ind_estimado[] = calcularIndicadores($totales['CMU'], 'CMU');
+        $ind_estimado[] = calcularIndicadores($totales['CMU'], 'CMU', $dias);
     } else {
         $estimado = obtenerTotalesEstimado($p, $desde, $hasta, $hoy);
-        if ($estimado !== false) $ind_estimado[] = calcularIndicadores($estimado, 'ESTIMADO');
+        if ($estimado !== false) $ind_estimado[] = calcularIndicadores($estimado, 'ESTIMADO', $dias);
     }
 
     $forecast = obtenerTotalesForecast($p, $desde, $hasta);
     if ($forecast !== false && count($forecast) > 0) {
-        $ind_forecast[] = calcularIndicadores($forecast);
+        $ind_forecast[] = calcularIndicadores($forecast, 'FORECAST_PERIODO', $dias);
     }
 }
 
 $indicadores = array();
 foreach ($ind_archivos as $archivo => $lista) {
-    $indicadores[$archivo] = consolidarIndicadores($lista);
+    $indicadores[$archivo] = consolidarIndicadores($lista, $dias);
 }
 if (count($ind_aa) > 0) {
-    $indicadores['AA'] = consolidarIndicadores($ind_aa);
+    $indicadores['AA'] = consolidarIndicadores($ind_aa, $dias);
 }
 if (count($ind_estimado) > 0) {
-    $indicadores['ESTIMADO'] = consolidarIndicadores($ind_estimado);
+    $indicadores['ESTIMADO'] = consolidarIndicadores($ind_estimado, $dias);
 }
 if (count($ind_forecast) > 0) {
-    $indicadores['FORECAST_PERIODO'] = consolidarIndicadores($ind_forecast);
+    $indicadores['FORECAST_PERIODO'] = consolidarIndicadores($ind_forecast, $dias);
 }
 
 responder(array(
