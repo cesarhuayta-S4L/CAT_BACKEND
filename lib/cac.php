@@ -78,6 +78,16 @@ function cmuCubreRango($pais, $desde, $hasta) {
     return true;
 }
 
+// Totales del CMU completados con REAL_MES solo en los conceptos que el CMU no trae (hoy México:
+// leads, inversión, matrículas y agentes). Lo que el CMU sí tiene no se toca.
+function completarCmuConReal($cmu, $real) {
+    if (!is_array($real)) return $cmu;
+    foreach (array('LEADS', 'INVERSION (MILLONES)', 'MATRICULAS', 'AGENTES INICIO TOTAL', 'AGENTES FINAL TOTAL') as $c) {
+        if (!isset($cmu[$c]) && isset($real[$c])) $cmu[$c] = $real[$c];
+    }
+    return $cmu;
+}
+
 // Valores diarios no nulos de un rango, por archivo, concepto y fecha: [archivo][concepto][fecha] => valor
 function obtenerDiariosRango($pais, $desde, $hasta, $archivos) {
     $p = getFiltroPais($pais);

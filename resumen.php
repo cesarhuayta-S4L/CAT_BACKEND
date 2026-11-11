@@ -34,11 +34,12 @@ foreach ($paises_activos as $p) {
 
     $anterior = obtenerTotales($p, mismoDiaAnioAnterior($desde), mismoDiaAnioAnterior($hasta));
     if ($anterior !== false && isset($anterior['CMU'])) {
-        $ind_aa[] = calcularIndicadores($anterior['CMU'], 'CMU', $dias, true);
+        $ind_aa[] = calcularIndicadores(completarCmuConReal($anterior['CMU'], isset($anterior['REAL_MES']) ? $anterior['REAL_MES'] : null), 'CMU', $dias, true);
     }
 
     if (isset($totales['CMU']) && cmuCubreRango($p, $desde, $hasta)) {
-        $ind_estimado[] = calcularIndicadores($totales['CMU'], 'CMU', $dias);
+        // Mes cerrado: el CMU manda; lo que no trae se completa con REAL_MES
+        $ind_estimado[] = calcularIndicadores(completarCmuConReal($totales['CMU'], isset($totales['REAL_MES']) ? $totales['REAL_MES'] : null), 'CMU', $dias);
     } else {
         $estimado = obtenerTotalesEstimado($p, $desde, $hasta, $hoy);
         if ($estimado !== false) $ind_estimado[] = calcularIndicadores($estimado, 'ESTIMADO', $dias);
