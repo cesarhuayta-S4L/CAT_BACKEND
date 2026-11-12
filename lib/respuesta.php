@@ -1,10 +1,8 @@
 <?php
 function responder($datos, $codigo = 200) {
     http_response_code($codigo);
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
     echo json_encode($datos);
     exit;
 }
