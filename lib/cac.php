@@ -13,6 +13,25 @@ function getFiltroPais($paisParam) {
     );
 }
 
+function agentesFinalCierre($pais, $desde, $hasta) {
+    $p = getFiltroPais($pais);
+    $sql = "SELECT fecha, valor_final
+            FROM datos_cac_dia
+            WHERE {$p['sql']} AND fecha BETWEEN ? AND ?
+              AND archivo = 'REAL_MES' AND concepto = 'AGENTES FINAL TOTAL'
+              AND valor_final IS NOT NULL
+            ORDER BY fecha";
+
+    $filas = consultar($sql, $p['tipos'] . "ss", array_merge($p['params'], array($desde, $hasta)));
+    if ($filas === false || count($filas) === 0) return null;
+
+    $porMes = array();
+    foreach ($filas as $f) {
+        $porMes[substr($f['fecha'], 0, 7)] = (float)$f['valor_final'];
+    }
+    return array_sum($porMes) / count($porMes);
+}
+
 // Suma y promedio por archivo y concepto, para un país y rango de fechas
 function obtenerTotales($pais, $desde, $hasta) {
     $p = getFiltroPais($pais);
@@ -34,6 +53,11 @@ function obtenerTotales($pais, $desde, $hasta) {
             'suma'     => (float)$f['suma'],
             'promedio' => (float)$f['promedio']
         );
+    }
+    
+    $cierre = agentesFinalCierre($pais, $desde, $hasta);
+    if ($cierre !== null && isset($totales['REAL_MES']['AGENTES FINAL TOTAL'])) {
+        $totales['REAL_MES']['AGENTES FINAL TOTAL']['promedio'] = $cierre;
     }
     return $totales;
 }
@@ -141,11 +165,17 @@ function obtenerTotalesEstimado($pais, $desde, $hasta, $hoy) {
     $cerrados = mesesCmuCerrados($pais, $desde, $hasta);
     if ($cerrados === false) $cerrados = array();
 
-    return totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($real), array_keys($cmu))),
+    $totales = totalizarRango($desde, $hasta, array_unique(array_merge(array_keys($real), array_keys($cmu))),
         function ($c, $fecha) use ($real, $cmu, $cerrados) {
             if (isset($cerrados[substr($fecha, 0, 7)]) && isset($cmu[$c][$fecha])) return $cmu[$c][$fecha];
             return isset($real[$c][$fecha]) ? $real[$c][$fecha] : null;
         });
+
+    $cierre = agentesFinalCierre($pais, $desde, $hasta);
+    if ($cierre !== null && isset($totales['AGENTES FINAL TOTAL'])) {
+        $totales['AGENTES FINAL TOTAL']['promedio'] = $cierre;
+    }
+    return $totales;
 }
 
 function obtenerTotalesForecast($pais, $desde, $hasta) {
